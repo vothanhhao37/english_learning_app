@@ -64,6 +64,49 @@ flutter pub get
 flutter run
 ```
 
+## Cấu hình và Chạy Whisper FastAPI
+
+### Yêu cầu:
+- Python >= 3.8
+- CUDA GPU (tùy chọn để tăng tốc độ xử lý)
+- Môi trường ảo Python
+
+### Cài đặt:
+
+1. Tạo môi trường ảo:
+```bash
+python -m venv whisper_env
+source whisper_env/bin/activate  # Trên Linux/MacOS
+whisper_env\Scripts\activate  # Trên Windows
+```
+
+2. Cài đặt các dependencies:
+```bash
+pip install fastapi uvicorn torch openai-whisper
+```
+
+### Cấu hình GPU:
+- Đảm bảo đã cài đặt CUDA và PyTorch hỗ trợ GPU:
+```bash
+pip install torch --extra-index-url https://download.pytorch.org/whl/cu118
+```
+
+### Chạy API:
+
+1. Khởi động API:
+```bash
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+2. Kiểm tra API:
+- Mở trình duyệt và truy cập `http://localhost:8000`
+- Sử dụng endpoint `/transcribe` để upload file âm thanh và nhận kết quả chuyển đổi văn bản.
+
+Ví dụ sử dụng cURL để gửi file âm thanh:
+```bash
+curl -X POST "http://localhost:8000/transcribe" -F "audio=@path/to/your/audio/file.wav"
+```
+
 ## Đóng góp
 
 Mọi đóng góp đều được hoan nghênh. Vui lòng tạo issue hoặc pull request để đóng góp.
