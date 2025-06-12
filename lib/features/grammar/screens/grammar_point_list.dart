@@ -3,7 +3,7 @@ import 'dart:math' as math;
 
 import '../../../services/grammar_service.dart';
 import '../../../services/firebase_service.dart';
-import 'lesson_detail.dart';
+import 'grammar_detail_screen.dart';
 
 class GrammarPointsList extends StatefulWidget {
   const GrammarPointsList({super.key});
@@ -37,6 +37,7 @@ class _GrammarPointsListState extends State<GrammarPointsList>
 
   void _fetchGrammarPoints() {
     _grammarService.fetchGrammarPoints().listen((points) {
+      if (!mounted) return;
       setState(() {
         _grammarPoints = points;
         for (int i = 0; i < _grammarPoints.length; i++) {
@@ -55,6 +56,7 @@ class _GrammarPointsListState extends State<GrammarPointsList>
       WidgetsBinding.instance.addPostFrameCallback((_) {
         for (int i = 0; i < _grammarPoints.length; i++) {
           Future.delayed(Duration(milliseconds: i * 50), () {
+            if (!mounted) return;
             if (_animationControllers[i] != null && !_animationControllers[i]!.isAnimating) {
               _animationControllers[i]!.forward(from: 0.0);
             }
@@ -62,6 +64,7 @@ class _GrammarPointsListState extends State<GrammarPointsList>
         }
       });
     }, onError: (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error loading grammar points: $e')),
       );
@@ -84,6 +87,7 @@ class _GrammarPointsListState extends State<GrammarPointsList>
   }
 
   void _toggleItem(int index) {
+    if (!mounted) return;
     setState(() {
       if (_expandedItems[index] == true) {
         _itemControllers[index]!.reverse();
@@ -146,7 +150,7 @@ class _GrammarPointsListState extends State<GrammarPointsList>
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
+            color: Colors.black.withValues(alpha:0.3),
             blurRadius: 8,
             spreadRadius: 1,
           ),
@@ -192,7 +196,7 @@ class _GrammarPointsListState extends State<GrammarPointsList>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
+              color: Colors.white.withValues(alpha:0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: const Text(
@@ -285,14 +289,14 @@ class _GrammarPointsListState extends State<GrammarPointsList>
         boxShadow: [
           BoxShadow(
             color: isExpanded
-                ? Colors.purple.withOpacity(0.4)
-                : Colors.blue.withOpacity(0.3),
+                ? Colors.purple.withValues(alpha:0.4)
+                : Colors.blue.withValues(alpha:0.3),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
         ],
         border: Border.all(
-          color: Colors.white.withOpacity(0.2),
+          color: Colors.white.withValues(alpha:0.2),
           width: 1,
         ),
       ),
@@ -320,7 +324,7 @@ class _GrammarPointsListState extends State<GrammarPointsList>
                       width: 50,
                       height: 50,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withValues(alpha:0.2),
                         shape: BoxShape.circle,
                       ),
                       child: const Center(
@@ -349,7 +353,7 @@ class _GrammarPointsListState extends State<GrammarPointsList>
                             _grammarPoints[index]['description'],
                             style: TextStyle(
                               fontSize: 13,
-                              color: Colors.white.withOpacity(0.8),
+                              color: Colors.white.withValues(alpha:0.8),
                             ),
                           ),
                         ],
@@ -384,7 +388,7 @@ class _GrammarPointsListState extends State<GrammarPointsList>
               child: Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
+                  color: Colors.white.withValues(alpha:0.1),
                   borderRadius: const BorderRadius.only(
                     bottomLeft: Radius.circular(16),
                     bottomRight: Radius.circular(16),
@@ -407,7 +411,7 @@ class _GrammarPointsListState extends State<GrammarPointsList>
                                   height: 24,
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
-                                    color: Colors.amber.withOpacity(0.8),
+                                    color: Colors.amber.withValues(alpha:0.8),
                                   ),
                                   child: Center(
                                     child: Text(
@@ -438,7 +442,7 @@ class _GrammarPointsListState extends State<GrammarPointsList>
                                         details[detailIndex]['description'],
                                         style: TextStyle(
                                           fontSize: 13,
-                                          color: Colors.white.withOpacity(0.9),
+                                          color: Colors.white.withValues(alpha:0.9),
                                         ),
                                       ),
                                     ],
@@ -451,7 +455,7 @@ class _GrammarPointsListState extends State<GrammarPointsList>
                                 padding: const EdgeInsets.only(top: 8, left: 36),
                                 child: Container(
                                   height: 1,
-                                  color: Colors.white.withOpacity(0.2),
+                                  color: Colors.white.withValues(alpha:0.2),
                                 ),
                               ),
                           ],

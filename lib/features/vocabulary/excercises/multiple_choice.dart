@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 
+
 class MultipleChoiceExercise extends StatefulWidget {
   final String topicId;
   final String wordId;
   final Map<String, dynamic> exerciseData;
-  final Function(bool isCorrect) onCompleted;
+  final Function(bool isCorrect, String userAnswer) onCompleted;
 
   const MultipleChoiceExercise({
     super.key,
@@ -18,17 +19,38 @@ class MultipleChoiceExercise extends StatefulWidget {
   State<MultipleChoiceExercise> createState() => _MultipleChoiceExerciseState();
 }
 
-class _MultipleChoiceExerciseState extends State<MultipleChoiceExercise> {
+class _MultipleChoiceExerciseState extends State<MultipleChoiceExercise> with SingleTickerProviderStateMixin {
   int? selectedIndex;
   int? correctIndex;
   bool showResult = false;
   List<String> options = [];
   String? question;
+  late AnimationController _animationController;
+  late Animation<double> _scaleAnimation;
+  bool isProcessing = false;
+  bool continueEnabled = false;
 
   @override
   void initState() {
     super.initState();
     _loadData();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: Curves.easeOutBack,
+      ),
+    );
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
   }
 
   @override
@@ -40,85 +62,87 @@ class _MultipleChoiceExerciseState extends State<MultipleChoiceExercise> {
         correctIndex = null;
         showResult = false;
         options = [];
+        isProcessing = false;
       });
       _loadData();
+      _animationController.forward(from: 0.0);
     }
   }
 
   void _loadData() {
     final data = widget.exerciseData;
     options = List<String>.from(data['options'] ?? []);
+    options.shuffle();
     correctIndex = data['correct_answer'] != null
         ? options.indexOf(data['correct_answer'])
         : data['answer'];
     question = data['question'] ?? "📝 Chọn đáp án đúng:";
   }
 
-  void _checkAnswer(int index) {
-    if (showResult) return;
+  void _checkAnswer(int index) async {
+    if (showResult || isProcessing) return;
     setState(() {
+      isProcessing = true;
       selectedIndex = index;
       showResult = true;
     });
 
     final isCorrect = index == correctIndex;
-    widget.onCompleted(isCorrect);
+    final userAnswer = selectedIndex != null ? options[selectedIndex!] : '';
+
+    widget.onCompleted(isCorrect, userAnswer);
+
+    setState(() {
+      isProcessing = false;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    return ScaleTransition(
+      scale: _scaleAnimation,
+      child: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF6A3DE8), Color(0xFF5035BE)],
+          ),
+        ),
+        child: SafeArea(
+          child: Padding(
       padding: const EdgeInsets.all(20),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text(
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.2),
+                      width: 1,
+                    ),
+                  ),
+                  child: Text(
             question ?? '',
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 20),
-          options.length == 4
-              ? GridView.count(
-            shrinkWrap: true,
-            crossAxisCount: 2,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-            childAspectRatio: 2.8,
-            physics: const NeverScrollableScrollPhysics(),
-            children: List.generate(options.length, _buildOptionBox),
-          )
-              : Column(
+                ),
+                const SizedBox(height: 30),
+                Column(
             children: List.generate(options.length, _buildOptionListTile),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildOptionBox(int index) {
-    final isCorrect = index == correctIndex;
-    final isSelected = index == selectedIndex;
-    final isWrong = isSelected && !isCorrect;
-    final color = showResult
-        ? (isCorrect ? Colors.green[200] : (isWrong ? Colors.red[200] : Colors.grey.shade200))
-        : Colors.grey.shade200;
-
-    final textColor = showResult && (isCorrect || isWrong) ? Colors.white : Colors.indigo[800];
-
-    return GestureDetector(
-      onTap: () => _checkAnswer(index),
-      child: Container(
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.black12),
-        ),
-        child: Text(
-          options[index],
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor),
+          ),
         ),
       ),
     );
@@ -128,26 +152,103 @@ class _MultipleChoiceExerciseState extends State<MultipleChoiceExercise> {
     final isCorrect = index == correctIndex;
     final isSelected = index == selectedIndex;
     final isWrong = isSelected && !isCorrect;
-    final color = showResult
-        ? (isCorrect ? Colors.green[200] : (isWrong ? Colors.red[200] : Colors.grey.shade200))
-        : Colors.grey.shade200;
+    
+    Color backgroundColor;
+    Color borderColor;
+    Widget? trailingIcon;
 
-    final textColor = showResult && (isCorrect || isWrong) ? Colors.white : Colors.indigo[800];
+    if (showResult) {
+      if (isCorrect) {
+        backgroundColor = const Color(0xFF4CAF50);
+        borderColor = Colors.green.shade700;
+        trailingIcon = const Icon(Icons.check_circle, color: Colors.white, size: 24);
+      } else if (isWrong) {
+        backgroundColor = const Color(0xFFF44336);
+        borderColor = Colors.red.shade700;
+        trailingIcon = const Icon(Icons.cancel, color: Colors.white, size: 24);
+      } else {
+        backgroundColor = Colors.white.withOpacity(0.15);
+        borderColor = Colors.white.withOpacity(0.3);
+        trailingIcon = null;
+      }
+    } else {
+      backgroundColor = Colors.white.withOpacity(0.15);
+      borderColor = Colors.white.withOpacity(0.3);
+      trailingIcon = null;
+    }
 
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 6),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.black12),
-      ),
-      child: ListTile(
-        title: Text(
-          options[index],
-          style: TextStyle(fontSize: 18, color: textColor, fontWeight: FontWeight.bold),
-          textAlign: TextAlign.center,
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: borderColor,
+          width: 2,
         ),
-        onTap: () => _checkAnswer(index),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: showResult ? null : () => _checkAnswer(index),
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 2,
+                        offset: const Offset(0, 1),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Text(
+                      '${index + 1}',
+                      style: const TextStyle(
+                        color: Color(0xFF6A3DE8),
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Text(
+          options[index],
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+        ),
+                if (trailingIcon != null) ...[
+                  const SizedBox(width: 16),
+                  trailingIcon,
+                ],
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

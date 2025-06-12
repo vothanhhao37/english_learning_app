@@ -4,7 +4,7 @@ import '../../../services/ipa_service.dart';
 
 class IpaAudioToWordQuiz extends StatefulWidget {
   final Map<String, dynamic> lesson;
-  final void Function(bool, String) onAnswer;
+  final void Function(bool, String, String) onAnswer;
 
   const IpaAudioToWordQuiz({
     Key? key,
@@ -83,7 +83,7 @@ class _IpaAudioToWordQuizState extends State<IpaAudioToWordQuiz> with TickerProv
 
   void _continueToNextQuestion() {
     if (hasAnswered) {
-      widget.onAnswer(isCorrect, widget.lesson['type']);
+      widget.onAnswer(isCorrect, widget.lesson['type'], selectedAnswer ?? '');
     }
   }
 

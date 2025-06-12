@@ -1,8 +1,10 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../../../models/grammar_model.dart';
 import '../../../services/grammar_service.dart';
 import '../../../services/firebase_service.dart';
 import '../widgets/exercise_navigator.dart';
+
 
 class GrammarDetailScreen extends StatefulWidget {
   final String grammarId;
@@ -22,32 +24,27 @@ class _GrammarDetailScreenState extends State<GrammarDetailScreen> with SingleTi
     {
       'type': 'multiple_choice',
       'title': 'Trắc nghiệm',
-      'difficulty': 'Trung bình',
-      'questionCount': 15,
+
     },
     {
       'type': 'fill_in_blank',
       'title': 'Điền vào chỗ trống',
-      'difficulty': 'Cơ bản',
-      'questionCount': 12,
+
     },
     {
       'type': 'rewrite',
       'title': 'Viết lại câu',
-      'difficulty': 'Nâng cao',
-      'questionCount': 8,
+
     },
     {
       'type': 'error_correction',
       'title': 'Tìm lỗi sai',
-      'difficulty': 'Cơ bản',
-      'questionCount': 12,
+
     },
     {
       'type': 'drag_and_drop',
       'title': 'Kéo và thả đúng vị trí',
-      'difficulty': 'Cơ bản',
-      'questionCount': 12,
+
     },
   ];
 
@@ -59,9 +56,27 @@ class _GrammarDetailScreenState extends State<GrammarDetailScreen> with SingleTi
     _loadData();
   }
 
+  Future<int> fetchQuestionCount(String grammarId, String type) async {
+    final snapshot = await FirebaseFirestore.instance
+        .collection('grammar')
+        .doc(grammarId)
+        .collection('exercises')
+        .where('type', isEqualTo: type)
+        .get();
+
+    return snapshot.docs.length;
+  }
+
   void _loadData() async {
     try {
       grammar = await _grammarService.fetchGrammarLesson(widget.grammarId);
+
+      // Lấy số lượng câu hỏi cho từng dạng bài
+      for (var exercise in exercises) {
+        int count = await fetchQuestionCount(widget.grammarId, exercise['type']);
+        exercise['questionCount'] = count;
+      }
+
       setState(() {
         _isLoading = false;
       });
@@ -190,7 +205,7 @@ class _GrammarDetailScreenState extends State<GrammarDetailScreen> with SingleTi
       child: Container(
         padding: const EdgeInsets.all(12.0),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.2),
+          color: Colors.white.withValues(alpha:0.2),
           borderRadius: BorderRadius.circular(10),
         ),
         child: const Text(
@@ -215,7 +230,7 @@ class _GrammarDetailScreenState extends State<GrammarDetailScreen> with SingleTi
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2),
+              color: Colors.black.withValues(alpha:0.2),
               blurRadius: 10,
               offset: const Offset(0, 5),
             ),
@@ -236,7 +251,7 @@ class _GrammarDetailScreenState extends State<GrammarDetailScreen> with SingleTi
             Text(
               grammar.description,
               style: TextStyle(
-                color: Colors.white.withOpacity(0.9),
+                color: Colors.white.withValues(alpha:0.9),
                 fontSize: 14,
               ),
             ),
@@ -251,7 +266,7 @@ class _GrammarDetailScreenState extends State<GrammarDetailScreen> with SingleTi
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(
-            color: Colors.white.withOpacity(0.2),
+            color: Colors.white.withValues(alpha:0.2),
             width: 1,
           ),
         ),
@@ -261,7 +276,7 @@ class _GrammarDetailScreenState extends State<GrammarDetailScreen> with SingleTi
         indicatorColor: Colors.white,
         indicatorWeight: 3,
         labelColor: Colors.white,
-        unselectedLabelColor: Colors.white.withOpacity(0.7),
+        unselectedLabelColor: Colors.white.withValues(alpha:0.7),
         tabs: const [
           Tab(text: 'Cấu trúc'),
           Tab(text: 'Lý thuyết'),
@@ -293,7 +308,7 @@ class _GrammarDetailScreenState extends State<GrammarDetailScreen> with SingleTi
         Container(
           padding: const EdgeInsets.all(16.0),
           decoration: BoxDecoration(
-            color: const Color(0xFF1E3A8A).withOpacity(0.5),
+            color: const Color(0xFF1E3A8A).withValues(alpha:0.5),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
@@ -365,7 +380,7 @@ class _GrammarDetailScreenState extends State<GrammarDetailScreen> with SingleTi
         Container(
           padding: const EdgeInsets.all(16.0),
           decoration: BoxDecoration(
-            color: const Color(0xFF1E3A8A).withOpacity(0.5),
+            color: const Color(0xFF1E3A8A).withValues(alpha:0.5),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
@@ -387,7 +402,7 @@ class _GrammarDetailScreenState extends State<GrammarDetailScreen> with SingleTi
                 decoration: BoxDecoration(
                   border: Border(
                     top: BorderSide(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha:0.2),
                       width: 1,
                     ),
                   ),
@@ -452,7 +467,7 @@ class _GrammarDetailScreenState extends State<GrammarDetailScreen> with SingleTi
           margin: const EdgeInsets.only(bottom: 16.0),
           padding: const EdgeInsets.all(16.0),
           decoration: BoxDecoration(
-            color: const Color(0xFF1E3A8A).withOpacity(0.5),
+            color: const Color(0xFF1E3A8A).withValues(alpha:0.5),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
@@ -483,7 +498,7 @@ class _GrammarDetailScreenState extends State<GrammarDetailScreen> with SingleTi
               Text(
                 example.translation,
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.8),
+                  color: Colors.white.withValues(alpha:0.8),
                   fontStyle: FontStyle.italic,
                   fontSize: 14,
                 ),
@@ -492,7 +507,7 @@ class _GrammarDetailScreenState extends State<GrammarDetailScreen> with SingleTi
               Container(
                 padding: const EdgeInsets.all(12.0),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1E3A8A).withOpacity(0.5),
+                  color: const Color(0xFF1E3A8A).withValues(alpha:0.5),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -535,7 +550,7 @@ class _GrammarDetailScreenState extends State<GrammarDetailScreen> with SingleTi
               height: 5,
               margin: const EdgeInsets.symmetric(vertical: 10),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.5),
+                color: Colors.white.withValues(alpha:0.5),
                 borderRadius: BorderRadius.circular(2.5),
               ),
             ),
@@ -565,7 +580,7 @@ class _GrammarDetailScreenState extends State<GrammarDetailScreen> with SingleTi
                   return Container(
                     margin: const EdgeInsets.only(bottom: 12.0),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1E3A8A).withOpacity(0.5),
+                      color: const Color(0xFF1E3A8A).withValues(alpha:0.5),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Material(
@@ -620,7 +635,7 @@ class _GrammarDetailScreenState extends State<GrammarDetailScreen> with SingleTi
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      '${exercise['questionCount']} câu hỏi - ${exercise['difficulty']}',
+                                      '${exercise['questionCount']} câu hỏi ',
                                       style: TextStyle(
                                         color: Colors.blue.shade200,
                                         fontSize: 13,

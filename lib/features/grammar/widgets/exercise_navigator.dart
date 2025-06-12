@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-
-import '../excercises/drag_and_drop.dart';
-import '../excercises/error_correction.dart';
-import '../excercises/fill_in_blank.dart';
-import '../excercises/multiple_choice.dart';
-import '../excercises/rewrite.dart';
+import '../excercises/grammar_drag_and_drop.dart';
+import '../excercises/grammar_error_correction.dart';
+import '../excercises/grammar_fill_in_blank.dart';
+import '../excercises/grammar_multiple_choice.dart';
+import '../excercises/grammar_rewrite.dart';
 
 
 class GrammarExerciseScreen extends StatelessWidget {
@@ -18,19 +17,19 @@ class GrammarExerciseScreen extends StatelessWidget {
 
     switch (type) {
       case 'multiple_choice':
-        exerciseWidget = MultipleChoiceExercises(grammarId: grammarId);
+        exerciseWidget = GrammarMultipleChoiceExercises(grammarId: grammarId);
         break;
       case 'rewrite':
-        exerciseWidget = RewriteExercises(grammarId: grammarId);
+        exerciseWidget = GrammarRewriteExercises(grammarId: grammarId);
         break;
       case 'error_correction':
-        exerciseWidget = ErrorCorrectionExercises(grammarId: grammarId);
+        exerciseWidget = GrammarErrorCorrectionExercises(grammarId: grammarId);
         break;
       case 'drag_and_drop':
-        exerciseWidget = DragAndDropExercises(grammarId: grammarId);
+        exerciseWidget = GrammarDragAndDropExercises(grammarId: grammarId);
         break;
       case 'fill_in_blank':
-        exerciseWidget = FillInBlankExercises(grammarId: grammarId);
+        exerciseWidget = GrammarFillInBlankExercises(grammarId: grammarId);
         break;
       default:
         exerciseWidget = const Center(

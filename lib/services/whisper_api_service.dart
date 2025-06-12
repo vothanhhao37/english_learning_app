@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 
 class WhisperService {
-  static const String _baseUrl = "http://192.168.1.23:8000";
+  static const String _baseUrl = "http://172.16.2.139:8000";
 
   final String apiUrl;
 

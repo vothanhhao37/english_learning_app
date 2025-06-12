@@ -5,11 +5,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
 import 'features/common/main_tab_screen.dart';
 import 'features/login/login_screen.dart';
+import 'services/grammar_service.dart';
 
 void main() async{
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-  WidgetsFlutterBinding.ensureInitialized();
+  
   FirebaseFirestore.instance.settings = Settings(
     persistenceEnabled: true,
     cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
@@ -81,6 +82,9 @@ class AuthGate extends StatelessWidget {
 
         // Nếu đã đăng nhập
         if (snapshot.hasData) {
+          // Gọi hàm syncGrammarTopicSummariesForUser khi user đăng nhập
+          final user = snapshot.data!;
+          GrammarService.syncGrammarTopicSummariesForUser(user.uid);
           return MainTabScreen();
         }
 

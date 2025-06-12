@@ -172,12 +172,14 @@ class IpaService {
     required String lessonId,
     required bool isCorrect,
     required String lessonType,
+    required String userAnswer,
   }) {
     FirestoreUtils.saveIpaScore(
       ipaId: ipaId,
       lessonId: lessonId,
       isCorrect: isCorrect,
       lessonType: lessonType,
+      userAnswer: userAnswer,
     );
   }
 

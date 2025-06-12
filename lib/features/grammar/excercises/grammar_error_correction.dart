@@ -1,23 +1,21 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import '../../common/constants.dart';
 import '../../../models/grammar_model.dart';
 import '../../../services/grammar_service.dart';
 import '../../../services/firebase_service.dart';
-import '../widgets/exercise_header.dart';
-import '../widgets/exercise_progress_indicator.dart';
-import '../widgets/result_dialog.dart';
+import '../../common/custom_snackbar.dart';
+import '../../common/congrationlation_popup.dart';
 
-class ErrorCorrectionExercises extends StatefulWidget {
+class GrammarErrorCorrectionExercises extends StatefulWidget {
   final String grammarId;
 
-  const ErrorCorrectionExercises({Key? key, required this.grammarId}) : super(key: key);
+  const GrammarErrorCorrectionExercises({Key? key, required this.grammarId}) : super(key: key);
 
   @override
-  _ErrorCorrectionExercisesState createState() => _ErrorCorrectionExercisesState();
+  _GrammarErrorCorrectionExercisesState createState() => _GrammarErrorCorrectionExercisesState();
 }
 
-class _ErrorCorrectionExercisesState extends State<ErrorCorrectionExercises> {
+class _GrammarErrorCorrectionExercisesState extends State<GrammarErrorCorrectionExercises> {
   late GrammarService _grammarService;
   bool _isLoading = true;
 
@@ -102,6 +100,23 @@ class _ErrorCorrectionExercisesState extends State<ErrorCorrectionExercises> {
           if (!_grammarService.isAnswered) {
             _grammarService.checkAnswer(wordId, exercise, widget.grammarId);
             setState(() {});
+            if (_grammarService.isCorrect) {
+              CustomSnackBarClaude.show(
+                context: context,
+                message: 'Chính xác!',
+                type: SnackBarType.success,
+                duration: const Duration(seconds: 2),
+                
+              );
+            } else {
+              CustomSnackBarClaude.show(
+                context: context,
+                message: 'Chưa đúng, hãy thử lại!',
+                type: SnackBarType.error,
+                duration: const Duration(seconds: 2),
+                
+              );
+            }
           }
         };
 
@@ -334,46 +349,6 @@ class _ErrorCorrectionExercisesState extends State<ErrorCorrectionExercises> {
                           text: TextSpan(
                             style: TextStyle(fontSize: 22, color: Colors.white, height: 1.5),
                             children: _buildSentenceSpans(exercise),
-                          ),
-                        ),
-                        if (_grammarService.isAnswered)
-                          Container(
-                            margin: EdgeInsets.only(top: 30),
-                            padding: EdgeInsets.all(15),
-                            decoration: BoxDecoration(
-                              color: _grammarService.isCorrect
-                                  ? Colors.green.withOpacity(0.2)
-                                  : Colors.red.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: _grammarService.isCorrect ? Colors.green : Colors.red,
-                                width: 1,
-                              ),
-                            ),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 3.0),
-                                  child: Icon(
-                                    _grammarService.isCorrect ? Icons.check_circle : Icons.error,
-                                    color: _grammarService.isCorrect ? Colors.green : Colors.red,
-                                    size: 20,
-                                  ),
-                                ),
-                                SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    _grammarService.isCorrect
-                                        ? AppConstants.correctMessage
-                                        : exercise.explanation,
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                ),
-                              ],
                             ),
                           ),
                       ],
@@ -388,28 +363,46 @@ class _ErrorCorrectionExercisesState extends State<ErrorCorrectionExercises> {
                         ? null
                         : (_grammarService.isAnswered
                         ? () {
-                      if (_grammarService.currentQuestionIndex <
-                          _grammarService.exercises.length - 1) {
+                      if (_grammarService.currentQuestionIndex < _grammarService.exercises.length - 1) {
                         _grammarService.nextQuestion();
                         setState(() {});
                       } else {
-                        showDialog(
-                          context: context,
-                          builder: (context) => ResultDialog(
+                        LessonCompletionPopup.show(
+                          context,
+                          lessonTitle: 'Tìm lỗi sai',
                             correctAnswers: _grammarService.correctAnswers,
                             totalQuestions: _grammarService.exercises.length,
+                          onContinue: () {
+                            Navigator.of(context).pop();
+                          },
                             onRestart: () {
                               Navigator.of(context).pop();
                               _grammarService.reset();
                               setState(() {});
                             },
-                          ),
                         );
                       }
                     }
                         : () {
                       _grammarService.checkAnswer(_grammarService.userAnswer, exercise, widget.grammarId);
                       setState(() {});
+                      if (_grammarService.isCorrect) {
+                        CustomSnackBarClaude.show(
+                          context: context,
+                          message: 'Chính xác!',
+                          type: SnackBarType.success,
+                          duration: const Duration(seconds: 2),
+                          
+                        );
+                      } else {
+                        CustomSnackBarClaude.show(
+                          context: context,
+                          message: 'Chưa đúng, hãy thử lại!',
+                          type: SnackBarType.error,
+                          duration: const Duration(seconds: 2),
+                          
+                        );
+                      }
                     }),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _grammarService.userAnswer == null

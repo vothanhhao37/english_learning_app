@@ -3,8 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'dart:ui';
-import '../grammar/screens/point_list.dart';
-import '../profile/screens/profile.dart';
+import '../grammar/screens/grammar_point_list.dart';
+import '../profile/screens/profile_screen.dart';
 import '../vocabulary/screens/topic_list.dart';
 import 'pronunciation_home_screen.dart';
 

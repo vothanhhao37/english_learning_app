@@ -379,7 +379,7 @@ class _IpaDetailScreenState extends State<IpaDetailScreen> {
         height: 180,
         width: 280,
         decoration: BoxDecoration(
-          color: const Color(0xFF1F2F70),
+          color: const Color(0xFFFFF8DC),
           borderRadius: BorderRadius.circular(10),
           boxShadow: [
             BoxShadow(
@@ -393,10 +393,10 @@ class _IpaDetailScreenState extends State<IpaDetailScreen> {
           borderRadius: BorderRadius.circular(10),
           child: imagePath != null && imagePath.isNotEmpty
               ? Image.asset(
-            'assets/images/ipaSound/$imagePath',
-            fit: BoxFit.contain,
-            errorBuilder: (context, error, stackTrace) => _buildPlaceholder(),
-          )
+                  'assets/images/mouth_shapes/$imagePath',
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) => _buildPlaceholder(),
+                )
               : _buildPlaceholder(),
         ),
       ),

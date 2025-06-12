@@ -12,7 +12,7 @@ import '../../common/loading_widget.dart';
 
 class IpaSpeechPractice extends StatefulWidget {
   final Map<String, dynamic> lesson;
-  final void Function(bool, String) onAnswer;
+  final void Function(bool, String, String) onAnswer;
 
   const IpaSpeechPractice({
     Key? key,
@@ -292,7 +292,7 @@ class _IpaSpeechPracticeState extends State<IpaSpeechPractice> with TickerProvid
 
   void _continueToNextQuestion() {
     if (hasAnswered) {
-      widget.onAnswer(isCorrect, widget.lesson['type']);
+      widget.onAnswer(isCorrect, widget.lesson['type'], spokenText);
     }
   }
 

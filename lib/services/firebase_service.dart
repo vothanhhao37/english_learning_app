@@ -115,89 +115,7 @@ class FirebaseService {
     });
   }
 
-  Future<void> grammar_saveGrammarScore({
-    required String topicId,
-    required String exerciseId,
-    required bool isCorrect,
-    required String exerciseType,
-    int scorePerQuestion = 10,
-  }) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      throw Exception('User not logged in');
-    }
 
-    final userDocRef = _firestore.collection('users').doc(user.uid);
-    final grammarRef = userDocRef
-        .collection('learningProgress')
-        .doc('grammar')
-        .collection('grammar')
-        .doc(topicId);
-
-    try {
-      final docSnapshot = await grammarRef.get();
-      Map<String, dynamic> existingQuestions = docSnapshot.exists && docSnapshot.data() != null
-          ? Map<String, dynamic>.from(docSnapshot.data()!['questions'] ?? {})
-          : {};
-
-      bool currentStatus = existingQuestions.containsKey(exerciseId)
-          ? existingQuestions[exerciseId]['status'] ?? false
-          : false;
-      int currentAttempts = existingQuestions.containsKey(exerciseId)
-          ? existingQuestions[exerciseId]['attempts'] ?? 0
-          : 0;
-
-      if (!currentStatus && isCorrect) {
-        existingQuestions[exerciseId] = {
-          'status': true,
-          'type': exerciseType,
-          'score': scorePerQuestion,
-          'attempts': currentAttempts + 1,
-          'completedAt': FieldValue.serverTimestamp(),
-          'updatedAt': FieldValue.serverTimestamp(),
-        };
-
-        await grammarRef.set({
-          'topic_id': topicId,
-          'lastUpdated': FieldValue.serverTimestamp(),
-          'questions': existingQuestions,
-        }, SetOptions(merge: true));
-
-        await grammar_updateSummary(userDocRef, topicId);
-      } else if (!existingQuestions.containsKey(exerciseId)) {
-        existingQuestions[exerciseId] = {
-          'status': isCorrect,
-          'type': exerciseType,
-          'score': isCorrect ? scorePerQuestion : 0,
-          'attempts': 1,
-          'completedAt': isCorrect ? FieldValue.serverTimestamp() : null,
-          'updatedAt': FieldValue.serverTimestamp(),
-        };
-
-        await grammarRef.set({
-          'topic_id': topicId,
-          'lastUpdated': FieldValue.serverTimestamp(),
-          'questions': existingQuestions,
-        }, SetOptions(merge: true));
-
-        await grammar_updateSummary(userDocRef, topicId);
-      } else {
-        existingQuestions[exerciseId] = {
-          ...existingQuestions[exerciseId],
-          'attempts': currentAttempts + 1,
-          'updatedAt': FieldValue.serverTimestamp(),
-        };
-
-        await grammarRef.set({
-          'topic_id': topicId,
-          'lastUpdated': FieldValue.serverTimestamp(),
-          'questions': existingQuestions,
-        }, SetOptions(merge: true));
-      }
-    } catch (e) {
-      throw Exception('Failed to save score: $e');
-    }
-  }
 
   Future<void> grammar_updateSummary(DocumentReference userDocRef, String topicId) async {
     final grammarRef = userDocRef
@@ -252,82 +170,6 @@ class FirebaseService {
     return _firestore.collection('users').doc(userId).update(data);
   }
 
-  // Grammar-related methods for ProfileService
-  Future<List<QueryDocumentSnapshot<Map<String, dynamic>>>> grammar_getTopics() {
-    return _firestore.collection('grammar').get().then((snapshot) => snapshot.docs);
-  }
-
-  Future<List<QueryDocumentSnapshot<Map<String, dynamic>>>> grammar_getSummary(String userId) {
-    return _firestore
-        .collection('users')
-        .doc(userId)
-        .collection('learningProgress')
-        .doc('grammarSummary')
-        .collection('grammarSummary')
-        .get()
-        .then((snapshot) => snapshot.docs);
-  }
-
-  // IPA (Pronunciation)-related methods for ProfileService
-  Future<DocumentSnapshot<Map<String, dynamic>>> ipa_getSummary(String userId) async {
-    return _firestore
-        .collection('users')
-        .doc(userId)
-        .collection('learningProgress')
-        .doc('ipa')
-        .get();
-  }
-
-  Future<List<QueryDocumentSnapshot<Map<String, dynamic>>>> ipa_getTopics() {
-    return _firestore.collection('ipa_pronunciation').get().then((snapshot) => snapshot.docs);
-  }
-
-  Future<DocumentSnapshot<Map<String, dynamic>>> ipa_getIpaSummary(String userId, String ipaId) async {
-    return _firestore
-        .collection('users')
-        .doc(userId)
-        .collection('learningProgress')
-        .doc('ipa')
-        .collection(ipaId)
-        .doc('summary')
-        .get();
-  }
-
-  Future<List<QueryDocumentSnapshot<Map<String, dynamic>>>>  ipa_getLessons(String ipaId) {
-    return _firestore
-        .collection('ipa_pronunciation')
-        .doc(ipaId)
-        .collection('lessons')
-        .get()
-        .then((snapshot) => snapshot.docs);
-  }
-
-  // Vocab-related methods for ProfileService
-  Future<DocumentSnapshot<Map<String, dynamic>>> vocab_getSummary(String userId) {
-    return _firestore
-        .collection('users')
-        .doc(userId)
-        .collection('learningProgress')
-        .doc('vocabulary')
-        .get();
-  }
-
-  Future<DocumentSnapshot<Map<String, dynamic>>> vocab_getTopic(String topicId) {
-    return _firestore.collection('vocabs_topics').doc(topicId).get();
-  }
-
-  Future<DocumentSnapshot<Map<String, dynamic>>> vocab_getTopicSummary(
-      String userId, String topicId) {
-    return _firestore
-        .collection('users')
-        .doc(userId)
-        .collection('learningProgress')
-        .doc('vocabulary')
-        .collection(topicId)
-        .doc('summary')
-        .get();
-  }
-
   // Conversation-related methods for ProfileService
   Future<DocumentSnapshot<Map<String, dynamic>>> conversation_getSummary(String userId) {
     return _firestore
@@ -339,7 +181,7 @@ class FirebaseService {
   }
 
   Future<List<QueryDocumentSnapshot<Map<String, dynamic>>>> conversation_getTopics() {
-    return _firestore.collection('pronunciation_topics').get().then((snapshot) => snapshot.docs);
+    return _firestore.collection('conversation').get().then((snapshot) => snapshot.docs);
   }
 
   Future<List<QueryDocumentSnapshot<Map<String, dynamic>>>> conversation_getUserTopics(
@@ -354,26 +196,4 @@ class FirebaseService {
         .then((snapshot) => snapshot.docs);
   }
 
-  Future<List<QueryDocumentSnapshot<Map<String, dynamic>>>> conversation_getLessonScores(
-      String userId, String topicId) {
-    return _firestore
-        .collection('users')
-        .doc(userId)
-        .collection('learningProgress')
-        .doc('conversation')
-        .collection('lessons')
-        .where('topicId', isEqualTo: topicId)
-        .get()
-        .then((snapshot) => snapshot.docs);
-  }
-
-  Future<List<QueryDocumentSnapshot<Map<String, dynamic>>>> conversation_getLessons(
-      String topicId) {
-    return _firestore
-        .collection('pronunciation_topics')
-        .doc(topicId)
-        .collection('lessons')
-        .get()
-        .then((snapshot) => snapshot.docs);
-  }
 }

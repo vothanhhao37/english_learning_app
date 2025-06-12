@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
 import '../../common/constants.dart';
-import '../../../models/grammar_model.dart';
 import '../../../services/grammar_service.dart';
 import '../../../services/firebase_service.dart';
-import '../widgets/result_dialog.dart';
+import '../../common/custom_snackbar.dart';
+import '../../common/congrationlation_popup.dart';
 
-class RewriteExercises extends StatefulWidget {
+class GrammarRewriteExercises extends StatefulWidget {
   final String grammarId;
 
-  const RewriteExercises({Key? key, required this.grammarId}) : super(key: key);
+  const GrammarRewriteExercises({Key? key, required this.grammarId}) : super(key: key);
 
   @override
-  _RewriteExercisesState createState() => _RewriteExercisesState();
+  _GrammarRewriteExercisesState createState() => _GrammarRewriteExercisesState();
 }
 
-class _RewriteExercisesState extends State<RewriteExercises> {
+class _GrammarRewriteExercisesState extends State<GrammarRewriteExercises> {
   late GrammarService _grammarService;
   bool _isLoading = true;
   final TextEditingController _answerController = TextEditingController();
@@ -234,7 +234,60 @@ class _RewriteExercisesState extends State<RewriteExercises> {
                       border: InputBorder.none,
                     ),
                     maxLines: 3,
+                    onChanged: (_) => setState(() {}),
                   ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    AnimatedOpacity(
+                      opacity: (!_grammarService.isAnswered && _answerController.text.isNotEmpty) ? 1.0 : 0.5,
+                      duration: const Duration(milliseconds: 200),
+                      child: SizedBox(
+                        width: 140,
+                        height: 44,
+                        child: ElevatedButton(
+                          onPressed: (!_grammarService.isAnswered && _answerController.text.isNotEmpty)
+                              ? () {
+                                  _grammarService.checkAnswer(_answerController.text, exercise, widget.grammarId);
+                                  setState(() {});
+                                  if (_grammarService.isCorrect) {
+                                    CustomSnackBarClaude.show(
+                                      context: context,
+                                      message: 'Chính xác!',
+                                      type: SnackBarType.success,
+                                      duration: const Duration(seconds: 2),
+                                      
+                                    );
+                                  } else {
+                                    CustomSnackBarClaude.show(
+                                      context: context,
+                                      message: 'Chưa đúng, hãy thử lại!',
+                                      type: SnackBarType.error,
+                                      duration: const Duration(seconds: 2),
+                                      
+                                    );
+                                  }
+                              }
+                              : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFFFC107),
+                            foregroundColor: Colors.black87,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(24),
+                            ),
+                            elevation: 0,
+                            shadowColor: Colors.black.withOpacity(0.1),
+                          ),
+                          child: const Text(
+                            'Kiểm tra',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 if (_isWrong)
                   Container(
@@ -256,8 +309,13 @@ class _RewriteExercisesState extends State<RewriteExercises> {
                       ],
                     ),
                   ),
-                Container(
+                const SizedBox(height: 16),
+                AnimatedOpacity(
+                  opacity: _grammarService.isAnswered ? 1.0 : 0.5,
+                  duration: const Duration(milliseconds: 200),
+                  child: SizedBox(
                   width: double.infinity,
+                    height: 48,
                   child: ElevatedButton(
                     onPressed: _grammarService.isAnswered
                         ? () {
@@ -265,54 +323,35 @@ class _RewriteExercisesState extends State<RewriteExercises> {
                         _grammarService.nextQuestion();
                         _resetState();
                       } else {
-                        showDialog(
-                          context: context,
-                          builder: (context) => ResultDialog(
+                                LessonCompletionPopup.show(
+                                  context,
+                                  lessonTitle: 'Viết lại câu',
                             correctAnswers: _grammarService.correctAnswers,
                             totalQuestions: _grammarService.exercises.length,
+                                  onContinue: () {
+                                    Navigator.of(context).pop();
+                                  },
                             onRestart: () {
                               Navigator.of(context).pop();
                               _grammarService.reset();
                               _resetState();
                             },
-                          ),
                         );
                       }
                     }
-                        : (_answerController.text.isNotEmpty
-                        ? () {
-                      _grammarService.checkAnswer(_answerController.text, exercise, widget.grammarId);
-                      if (!_grammarService.isCorrect) {
-                        setState(() {
-                          _isWrong = true;
-                          _errorMessage = exercise.explanation;
-                        });
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(AppConstants.correctMessage),
-                            backgroundColor: Colors.green,
-                            duration: Duration(seconds: 1),
-                          ),
-                        );
-                      }
-                    }
-                        : null),
+                          : null,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFFFFC107).withOpacity(
-                          _grammarService.isAnswered || _answerController.text.isNotEmpty ? 1.0 : 0.5),
-                      padding: EdgeInsets.symmetric(vertical: 15),
+                        backgroundColor: const Color(0xFFFFC107),
+                        foregroundColor: Colors.black87,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(12),
                       ),
-                      minimumSize: Size(double.infinity, 50),
+                        elevation: 0,
+                        shadowColor: Colors.black.withOpacity(0.1),
                     ),
-                    child: Text(
-                      _grammarService.isAnswered ? 'Câu tiếp theo' : 'Kiểm tra',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                      child: const Text(
+                        'Tiếp tục',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                       ),
                     ),
                   ),

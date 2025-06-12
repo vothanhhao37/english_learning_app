@@ -62,10 +62,11 @@ dependencies:
   lottie: ^3.3.1
   provider: ^6.1.5
   equatable: ^2.0.7
-
+  shared_preferences: ^2.5.3
+  synchronized: ^3.0.0
+  diff_match_patch: ^0.4.1
 
 dev_dependencies:
-
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
@@ -90,6 +91,8 @@ flutter:
     - assets/images/
     - assets/images/vocab_topic/
     - assets/audio/ipaSound/
+    - assets/images/conversation/
+    - assets/images/mouth_shapes/
 flutter_launcher_icons:
   android: true
   ios: true

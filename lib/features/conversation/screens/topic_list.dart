@@ -10,14 +10,33 @@ class ConversationTopicListScreen extends StatefulWidget {
   State<ConversationTopicListScreen> createState() => _ConversationTopicListScreenState();
 }
 
-class _ConversationTopicListScreenState extends State<ConversationTopicListScreen> with TickerProviderStateMixin {
-  final Map<int, AnimationController> _animationControllers = {};
+class _ConversationTopicListScreenState extends State<ConversationTopicListScreen> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _fadeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+
+    _scaleAnimation = Tween<double>(begin: 0.5, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+    );
+
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeIn),
+    );
+
+    _controller.forward();
+  }
 
   @override
   void dispose() {
-    for (var controller in _animationControllers.values) {
-      controller.dispose();
-    }
+    _controller.dispose();
     super.dispose();
   }
 
@@ -38,7 +57,7 @@ class _ConversationTopicListScreenState extends State<ConversationTopicListScree
               _buildHeader(),
               const SizedBox(height: 20),
               StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance.collection('pronunciation_topics').snapshots(),
+                stream: FirebaseFirestore.instance.collection('conversation').snapshots(),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());
@@ -49,22 +68,6 @@ class _ConversationTopicListScreenState extends State<ConversationTopicListScree
                   final docs = snapshot.data?.docs ?? [];
                   if (docs.isEmpty) {
                     return const Center(child: Text('Chưa có chủ đề nào.'));
-                  }
-
-                  for (int i = 0; i < docs.length; i++) {
-                    if (!_animationControllers.containsKey(i)) {
-                      _animationControllers[i] = AnimationController(
-                        vsync: this,
-                        duration: const Duration(milliseconds: 600),
-                      );
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        Future.delayed(Duration(milliseconds: i * 100), () {
-                          if (mounted && _animationControllers[i] != null && !_animationControllers[i]!.isAnimating) {
-                            _animationControllers[i]!.forward(from: 0.0);
-                          }
-                        });
-                      });
-                    }
                   }
 
                   return Padding(
@@ -86,126 +89,142 @@ class _ConversationTopicListScreenState extends State<ConversationTopicListScree
                         final imageUrl = data['imageUrl'] ?? '';
 
                         return AnimatedBuilder(
-                          animation: _animationControllers[index]!,
+                          animation: _controller,
                           builder: (context, child) {
-                            final scaleAnimation = Tween<double>(begin: 0.5, end: 1.0).animate(
-                              CurvedAnimation(
-                                parent: _animationControllers[index]!,
-                                curve: Curves.easeOut,
-                              ),
-                            );
-                            final opacityAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-                              CurvedAnimation(
-                                parent: _animationControllers[index]!,
-                                curve: Curves.easeOut,
-                              ),
-                            );
-
                             return Transform.scale(
-                              scale: scaleAnimation.value,
+                              scale: _scaleAnimation.value,
                               child: Opacity(
-                                opacity: opacityAnimation.value,
-                                child: child,
+                                opacity: _fadeAnimation.value,
+                                child: GestureDetector(
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => ConversationTopicDetailScreen(
+                                          topicId: docs[index].id,
+                                          topicName: title,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  child: Card(
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    elevation: 4,
+                                    clipBehavior: Clip.hardEdge,
+                                    child: Stack(
+                                      fit: StackFit.expand,
+                                      children: [
+                                        // Background Image
+                                        imageUrl.isNotEmpty
+                                            ? Image.asset(
+                                                'assets/images/conversation/$imageUrl',
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (_, __, ___) => _placeholderImage(),
+                                              )
+                                            : _placeholderImage(),
+                                        // Semi-transparent overlay for text area
+                                        Positioned(
+                                          bottom: 0,
+                                          left: 0,
+                                          right: 0,
+                                          child: Container(
+                                            height: 80,
+                                            decoration: BoxDecoration(
+                                              gradient: LinearGradient(
+                                                begin: Alignment.bottomCenter,
+                                                end: Alignment.topCenter,
+                                                colors: [
+                                                  Colors.black.withOpacity(0.4),
+                                                  Colors.transparent,
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        // Content
+                                        Padding(
+                                          padding: const EdgeInsets.all(12.0),
+                                          child: Column(
+                                            mainAxisAlignment: MainAxisAlignment.end,
+                                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                                            children: [
+                                              Text(
+                                                title,
+                                                style: const TextStyle(
+                                                  fontSize: 18,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.white,
+                                                  shadows: [
+                                                    Shadow(
+                                                      blurRadius: 6,
+                                                      color: Colors.black,
+                                                      offset: Offset(0, 2),
+                                                    ),
+                                                    Shadow(
+                                                      blurRadius: 6,
+                                                      color: Colors.black,
+                                                      offset: Offset(0, -2),
+                                                    ),
+                                                    Shadow(
+                                                      blurRadius: 6,
+                                                      color: Colors.black,
+                                                      offset: Offset(2, 0),
+                                                    ),
+                                                    Shadow(
+                                                      blurRadius: 6,
+                                                      color: Colors.black,
+                                                      offset: Offset(-2, 0),
+                                                    ),
+                                                  ],
+                                                ),
+                                                textAlign: TextAlign.center,
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                description,
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 13,
+                                                  fontStyle: FontStyle.italic,
+                                                  shadows: [
+                                                    Shadow(
+                                                      blurRadius: 6,
+                                                      color: Colors.black,
+                                                      offset: Offset(0, 2),
+                                                    ),
+                                                    Shadow(
+                                                      blurRadius: 6,
+                                                      color: Colors.black,
+                                                      offset: Offset(0, -2),
+                                                    ),
+                                                    Shadow(
+                                                      blurRadius: 6,
+                                                      color: Colors.black,
+                                                      offset: Offset(2, 0),
+                                                    ),
+                                                    Shadow(
+                                                      blurRadius: 6,
+                                                      color: Colors.black,
+                                                      offset: Offset(-2, 0),
+                                                    ),
+                                                  ],
+                                                ),
+                                                textAlign: TextAlign.center,
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
                               ),
                             );
                           },
-                          child: GestureDetector(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => ConversationTopicDetailScreen(
-                                    topicId: docs[index].id,
-                                    topicName: title,
-                                  ),
-                                ),
-                              );
-                            },
-                            child: Card(
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              elevation: 4,
-                              clipBehavior: Clip.hardEdge,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                    colors: [
-                                      Color.fromARGB(38, 255, 255, 255),
-                                      Color.fromARGB(13, 255, 255, 255),
-                                    ],
-                                  ),
-                                  borderRadius: BorderRadius.circular(12),
-                                  boxShadow: const [
-                                    BoxShadow(
-                                      color: Colors.black26,
-                                      blurRadius: 12,
-                                      offset: Offset(0, 4),
-                                    ),
-                                  ],
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                                  children: [
-                                    Expanded(
-                                      child: imageUrl.isNotEmpty
-                                          ? Image.network(
-                                        imageUrl,
-                                        fit: BoxFit.cover,
-                                        loadingBuilder: (context, child, progress) => progress == null
-                                            ? child
-                                            : Center(
-                                          child: CircularProgressIndicator(
-                                            value: progress.expectedTotalBytes != null
-                                                ? progress.cumulativeBytesLoaded / progress.expectedTotalBytes!
-                                                : null,
-                                          ),
-                                        ),
-                                        errorBuilder: (_, __, ___) => _placeholderImage(),
-                                      )
-                                          : _placeholderImage(),
-                                    ),
-                                    Padding(
-                                      padding: const EdgeInsets.all(8.0),
-                                      child: Text(
-                                        title,
-                                        style: const TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                          color: Color(0xFF00B7EB),
-                                          shadows: [
-                                            Shadow(
-                                              blurRadius: 2,
-                                              color: Colors.black26,
-                                              offset: Offset(0, 1),
-                                            ),
-                                          ],
-                                        ),
-                                        textAlign: TextAlign.center,
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                                      child: Text(
-                                        description,
-                                        style: const TextStyle(
-                                          color: Color(0xFFDCDCDC),
-                                          fontSize: 12,
-                                          fontStyle: FontStyle.italic,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
                         );
                       },
                     ),

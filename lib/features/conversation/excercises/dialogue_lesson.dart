@@ -122,10 +122,7 @@ class _DialogueLessonState extends State<DialogueLesson> {
     final score = widget.calculateScoreCallback(correct, spoken);
 
     final prevScore = _highestScores[_currentIndex] ?? 0;
-    if (score > prevScore) {
-      _highestScores[_currentIndex] = score;
-      await widget.saveDialogueScoreCallback(widget.lessonId, widget.dialogue, _spokenTexts, Map<int, int>.from(_highestScores));
-    }
+    bool isNewHighScore = score > prevScore;
 
     setState(() {
       _messages[_currentIndex * 2 + 1] = DialogueMessage(
@@ -136,7 +133,12 @@ class _DialogueLessonState extends State<DialogueLesson> {
         resultWords: resultWords,
         score: score,
       );
+      if (isNewHighScore) {
+         _highestScores[_currentIndex] = score;
+      }
     });
+
+    await widget.saveDialogueScoreCallback(widget.lessonId, widget.dialogue, _spokenTexts, Map<int, int>.from(_highestScores));
 
     if ((_highestScores[_currentIndex] ?? 0) < (minCorrectThreshold * 100)) {
       ScaffoldMessenger.of(context).showSnackBar(

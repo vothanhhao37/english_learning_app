@@ -78,7 +78,7 @@ class _IpaQuizScreenState extends State<IpaQuizScreen> with SingleTickerProvider
     }
   }
 
-  void handleQuizAnswer(bool isCorrect, String lessonType) {
+  void handleQuizAnswer(bool isCorrect, String lessonType, String userAnswer) {
     if (isCorrect) {
       setState(() {
         correctAnswers++;
@@ -91,6 +91,7 @@ class _IpaQuizScreenState extends State<IpaQuizScreen> with SingleTickerProvider
       lessonId: lessonId,
       isCorrect: isCorrect,
       lessonType: lessonType,
+      userAnswer: userAnswer,
     );
     nextLesson();
   }
@@ -251,7 +252,7 @@ class _IpaQuizScreenState extends State<IpaQuizScreen> with SingleTickerProvider
         return IpaAudioToWordQuiz(
           key: ValueKey(currentLessonIndex),
           lesson: lesson,
-          onAnswer: handleQuizAnswer,
+          onAnswer: (isCorrect, lessonType, userAnswer) => handleQuizAnswer(isCorrect, lessonType, userAnswer),
         );
       case 'word_to_audio':
         if (!lesson.containsKey('options') || !lesson.containsKey('correct_answer')) {
@@ -260,7 +261,7 @@ class _IpaQuizScreenState extends State<IpaQuizScreen> with SingleTickerProvider
         return IpaWordToAudioQuiz(
           key: ValueKey(currentLessonIndex),
           lesson: lesson,
-          onAnswer: handleQuizAnswer,
+          onAnswer: (isCorrect, lessonType, userAnswer) => handleQuizAnswer(isCorrect, lessonType, userAnswer),
         );
       case 'match_ipa':
         if (!lesson.containsKey('options') || !lesson.containsKey('correct_answer')) {
@@ -269,7 +270,7 @@ class _IpaQuizScreenState extends State<IpaQuizScreen> with SingleTickerProvider
         return IpaMatchingQuiz(
           key: ValueKey(currentLessonIndex),
           lesson: lesson,
-          onAnswer: handleQuizAnswer,
+          onAnswer: (isCorrect, lessonType, userAnswer) => handleQuizAnswer(isCorrect, lessonType, userAnswer),
         );
       case 'speech_practice':
         if (!lesson.containsKey('word') || !lesson.containsKey('ipa')) {
@@ -278,7 +279,7 @@ class _IpaQuizScreenState extends State<IpaQuizScreen> with SingleTickerProvider
         return IpaSpeechPractice(
           key: ValueKey(currentLessonIndex),
           lesson: lesson,
-          onAnswer: handleQuizAnswer,
+          onAnswer: (isCorrect, lessonType, userAnswer) => handleQuizAnswer(isCorrect, lessonType, userAnswer),
         );
       default:
         return Center(child: Text('Không hỗ trợ loại bài tập: $lessonType'));

@@ -55,13 +55,8 @@ class VocabularyService {
         .collection('quizResults')
         .get();
 
-    final totalQuestions = wordsSnap.docs.fold(0, (sum, doc) {
-      final exercises = doc.data()['exercises'] as Map<String, dynamic>? ?? {};
-      return sum + exercises.length;
-    });
-
-    final Map<String, String> quizStatuses = {
-      for (final doc in resultsSnap.docs) doc.id: doc['status'] as String
+    final Map<String, bool> quizResultsStatus = {
+      for (final doc in resultsSnap.docs) doc.id: doc['bestResult'] as bool? ?? false
     };
 
     final List<Map<String, dynamic>> allExercises = [];
@@ -77,14 +72,14 @@ class VocabularyService {
         if (supportedTypes.contains(type)) {
           final quizKey = entry.key;
           final quizId = '${wordId}_$quizKey';
-          final status = quizStatuses[quizId];
+          final isCorrect = quizResultsStatus[quizId] ?? false;
 
           allExercises.add({
             'wordId': wordId,
             'type': type,
             'key': quizKey,
             'data': entry.value,
-            'status': status,
+            'status': isCorrect ? 'correct' : 'pending',
           });
         }
       }
@@ -104,13 +99,16 @@ class VocabularyService {
     required String wordId,
     required String quizKey,
     required String type,
-    required String status,
+    required bool isCorrect,
+    required String userAnswer,
+    required String topicTitle,
+    int scorePerCorrectAnswer = 10,
   }) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
 
     final quizId = '${wordId}_$quizKey';
-    final docRef = FirebaseFirestore.instance
+    final summaryDocRef = FirebaseFirestore.instance
         .collection('users')
         .doc(uid)
         .collection('learningProgress')
@@ -120,13 +118,46 @@ class VocabularyService {
         .collection('quizResults')
         .doc(quizId);
 
-    await docRef.set({
-      'wordId': wordId,
-      'type': type,
-      'status': status,
-      'updatedAt': FieldValue.serverTimestamp(),
-      'lastAttemptTime': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+    final attemptsColRef = summaryDocRef.collection('attempts');
+
+    try {
+      await attemptsColRef.add({
+        'isCorrect': isCorrect,
+        'score': isCorrect ? scorePerCorrectAnswer : 0,
+        'timestamp': FieldValue.serverTimestamp(),
+        'userAnswer': userAnswer,
+      });
+
+      final summaryDoc = await summaryDocRef.get();
+      int currentAttemptCount = 0;
+      bool currentBestResult = false;
+
+      if (summaryDoc.exists) {
+        final data = summaryDoc.data()!;
+        currentAttemptCount = (data['attemptCount'] as int? ?? 0);
+        currentBestResult = (data['bestResult'] as bool? ?? false);
+      }
+
+      final newBestResult = currentBestResult || isCorrect;
+
+      await summaryDocRef.set({
+        'wordId': wordId,
+        'quizKey': quizKey,
+        'type': type,
+        'attemptCount': currentAttemptCount + 1,
+        'bestResult': newBestResult,
+        'lastAttemptTime': FieldValue.serverTimestamp(),
+        'topicTitle': topicTitle,
+      }, SetOptions(merge: true));
+
+      await updateTopicProgress(topicId, topicTitle);
+      await updateOverallProgress(uid);
+
+      print('Đã lưu kết quả bài tập từ vựng (attempt) cho $quizId, đúng: $isCorrect. Summary updated.');
+
+    } catch (e) {
+       print('Lỗi khi lưu kết quả bài tập từ vựng: $e');
+    }
   }
 
   Future<void> updateTopicProgress(String topicId, String topicTitle) async {
@@ -146,7 +177,7 @@ class VocabularyService {
       totalQuestions += exercises.length;
     }
 
-    // Get unique quiz results for this topic
+    // Get quiz results summaries for this topic
     final quizResultsSnap = await FirebaseFirestore.instance
         .collection('users')
         .doc(uid)
@@ -157,20 +188,16 @@ class VocabularyService {
         .collection('quizResults')
         .get();
 
-    // Count unique quizIds attempted and correct ones
-    Set<String> attemptedQuizIds = {};
-    Set<String> correctQuizIds = {};
+    // Tính toán completedQuestions và correctQuestions từ các document summary
+    int completedQuestions = quizResultsSnap.docs.length;
+    int correctQuestions = 0;
     
     for (var doc in quizResultsSnap.docs) {
-      final quizId = doc.id;
-      attemptedQuizIds.add(quizId);
-      if (doc['status'] == 'correct') {
-        correctQuizIds.add(quizId);
+      final bestResult = doc.data()['bestResult'] as bool? ?? false;
+      if (bestResult) {
+        correctQuestions++;
       }
     }
-
-    final completedQuestions = attemptedQuizIds.length;
-    final correctQuestions = correctQuizIds.length;
 
     // Calculate progress and accuracy
     final progress = totalQuestions > 0 ? completedQuestions / totalQuestions : 0;
@@ -200,38 +227,52 @@ class VocabularyService {
   }
 
   Future<void> updateOverallProgress(String uid) async {
-    // Get all topics
+    // Get all topics (logic này vẫn đúng)
     final allTopicsSnap = await FirebaseFirestore.instance.collection('vocabs_topics').get();
     
     int totalQuestions = 0;
+    // totalCompletedQuestions và totalCorrectQuestions sẽ tổng hợp từ summary chủ đề
     int totalCompletedQuestions = 0;
     int totalCorrectQuestions = 0;
-    Map<String, int> topicsQuestions = {};
+    Map<String, int> topicsQuestions = {}; // Map này lưu tổng số câu hỏi mỗi chủ đề gốc
 
     // Process each topic
     for (var topicDoc in allTopicsSnap.docs) {
       final topicId = topicDoc.id;
-      
-      // Get topic summary
-      final topicSummarySnap = await FirebaseFirestore.instance
+      // Lấy tổng số câu hỏi từ dữ liệu gốc của chủ đề
+      final wordsSnap = await FirebaseFirestore.instance
+          .collection('vocabs_topics')
+          .doc(topicId)
+          .collection('words')
+          .get();
+      int topicTotalQuestions = 0;
+       for (var wordDoc in wordsSnap.docs) {
+          final exercises = wordDoc.data()['exercises'] as Map<String, dynamic>? ?? {};
+          topicTotalQuestions += exercises.length;
+       }
+       totalQuestions += topicTotalQuestions;
+       topicsQuestions[topicId] = topicTotalQuestions;
+
+      // Get topic summary (lấy document summary của chủ đề)
+      final topicSummaryDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(uid)
           .collection('learningProgress')
           .doc('vocabulary')
           .collection(topicId)
-          .doc('summary')
+          .doc('summary') // Lấy document summary của chủ đề
           .get();
 
-      if (topicSummarySnap.exists) {
-        final data = topicSummarySnap.data()!;
-        final topicTotalQuestions = data['totalQuestions'] as int? ?? 0;
+      if (topicSummaryDoc.exists) {
+        final data = topicSummaryDoc.data()!;
+        // Đọc completedQuestions và correctQuestions từ document summary chủ đề
         final topicCompletedQuestions = data['completedQuestions'] as int? ?? 0;
         final topicCorrectQuestions = data['correctQuestions'] as int? ?? 0;
 
-        totalQuestions += topicTotalQuestions;
+        // Cộng dồn vào tổng
         totalCompletedQuestions += topicCompletedQuestions;
         totalCorrectQuestions += topicCorrectQuestions;
-        topicsQuestions[topicId] = topicTotalQuestions;
+        // topicsQuestions[topicId] = topicTotalQuestions; // Đã làm ở trên
       }
     }
 
@@ -244,16 +285,16 @@ class VocabularyService {
         .collection('users')
         .doc(uid)
         .collection('learningProgress')
-        .doc('vocabulary')
+        .doc('vocabulary') // Cập nhật document summary tổng thể
         .set({
-      'summary': {
+      'summary': { // Lưu vào subfield summary
         'totalTopics': allTopicsSnap.docs.length,
         'totalQuestions': totalQuestions,
         'totalCompletedQuestions': totalCompletedQuestions,
         'totalCorrectQuestions': totalCorrectQuestions,
         'overallProgress': overallProgress,
         'overallAccuracy': overallAccuracy,
-        'topicsQuestions': topicsQuestions,
+        'topicsQuestions': topicsQuestions, // Lưu map tổng số câu mỗi chủ đề gốc
         'lastUpdated': FieldValue.serverTimestamp(),
       }
     }, SetOptions(merge: true));

@@ -1,25 +1,24 @@
 import 'package:flutter/material.dart';
-import '../../common/constants.dart';
 import '../../../models/grammar_model.dart';
 import '../../../services/grammar_service.dart';
 import '../../../services/firebase_service.dart';
-import '../widgets/result_dialog.dart';
+import '../../common/custom_snackbar.dart';
+import '../../common/congrationlation_popup.dart';
 
-class DragAndDropExercises extends StatefulWidget {
+class GrammarDragAndDropExercises extends StatefulWidget {
   final String grammarId;
 
-  const DragAndDropExercises({required this.grammarId});
+  const GrammarDragAndDropExercises({required this.grammarId});
 
   @override
-  _DragAndDropExercisesState createState() => _DragAndDropExercisesState();
+  _GrammarDragAndDropExercisesState createState() => _GrammarDragAndDropExercisesState();
 }
 
-class _DragAndDropExercisesState extends State<DragAndDropExercises> {
+class _GrammarDragAndDropExercisesState extends State<GrammarDragAndDropExercises> {
   late GrammarService _grammarService;
   bool _isLoading = true;
   List<String> _currentAnswer = [];
-  bool _isWrong = false;
-  String _errorMessage = '';
+
 
   @override
   void initState() {
@@ -47,8 +46,7 @@ class _DragAndDropExercisesState extends State<DragAndDropExercises> {
   void _resetState() {
     setState(() {
       _currentAnswer = [];
-      _isWrong = false;
-      _errorMessage = '';
+
     });
   }
 
@@ -64,25 +62,23 @@ class _DragAndDropExercisesState extends State<DragAndDropExercises> {
           _grammarService.checkAnswer(userAnswer, exercise, widget.grammarId);
 
           if (_grammarService.isCorrect) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(AppConstants.correctMessage),
-                backgroundColor: Colors.green,
-                duration: Duration(seconds: 1),
-              ),
+            setState(() {});
+            CustomSnackBarClaude.show(
+              context: context,
+              message: 'Chính xác!',
+              type: SnackBarType.success,
+              duration: const Duration(seconds: 2),
+              
             );
           } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('${AppConstants.incorrectMessage}\n${exercise.explanation}'),
-                backgroundColor: Colors.red,
-                duration: Duration(seconds: 3),
-              ),
+
+            CustomSnackBarClaude.show(
+              context: context,
+              message: 'Chưa đúng, hãy thử lại!',
+              type: SnackBarType.error,
+              duration: const Duration(seconds: 2),
+              
             );
-            setState(() {
-              _isWrong = true;
-              _errorMessage = exercise.explanation;
-            });
           }
         }
       });
@@ -124,7 +120,7 @@ class _DragAndDropExercisesState extends State<DragAndDropExercises> {
                   if (!_grammarService.isAnswered) {
                     setState(() {
                       _currentAnswer.remove(word);
-                      _isWrong = false;
+
                     });
                   }
                 },
@@ -243,8 +239,7 @@ class _DragAndDropExercisesState extends State<DragAndDropExercises> {
             if (!_grammarService.isAnswered) {
               setState(() {
                 _currentAnswer.add(data);
-                _isWrong = false;
-                _errorMessage = '';
+
               });
             }
           },
@@ -258,17 +253,19 @@ class _DragAndDropExercisesState extends State<DragAndDropExercises> {
                 _grammarService.nextQuestion();
                 _resetState();
               } else {
-                showDialog(
-                  context: context,
-                  builder: (context) => ResultDialog(
-                    correctAnswers: _grammarService.correctAnswers,
-                    totalQuestions: _grammarService.exercises.length,
-                    onRestart: () {
-                      Navigator.of(context).pop();
-                      _grammarService.reset();
-                      _resetState();
-                    },
-                  ),
+                LessonCompletionPopup.show(
+                  context,
+                  lessonTitle: 'Kéo và thả',
+                  correctAnswers: _grammarService.correctAnswers,
+                  totalQuestions: _grammarService.exercises.length,
+                  onContinue: () {
+                    Navigator.of(context).pop();
+                  },
+                  onRestart: () {
+                    Navigator.of(context).pop();
+                    _grammarService.reset();
+                    _resetState();
+                  },
                 );
               }
             }
@@ -278,25 +275,23 @@ class _DragAndDropExercisesState extends State<DragAndDropExercises> {
               _grammarService.checkAnswer(userAnswer, exercise, widget.grammarId);
 
               if (_grammarService.isCorrect) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(AppConstants.correctMessage),
-                    backgroundColor: Colors.green,
-                    duration: Duration(seconds: 1),
-                  ),
+                setState(() {});
+                CustomSnackBarClaude.show(
+                  context: context,
+                  message: 'Chính xác!',
+                  type: SnackBarType.success,
+                  duration: const Duration(seconds: 2),
+                  
                 );
               } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('${AppConstants.incorrectMessage}\n${exercise.explanation}'),
-                    backgroundColor: Colors.red,
-                    duration: Duration(seconds: 3),
-                  ),
+
+                CustomSnackBarClaude.show(
+                  context: context,
+                  message: 'Chưa đúng, hãy thử lại!',
+                  type: SnackBarType.error,
+                  duration: const Duration(seconds: 2),
+                  
                 );
-                setState(() {
-                  _isWrong = true;
-                  _errorMessage = exercise.explanation;
-                });
               }
             }
                 : null),
@@ -322,203 +317,7 @@ class _DragAndDropExercisesState extends State<DragAndDropExercises> {
     );
   }
 
-  Widget _buildFillInBlankQuestion(Exercise exercise) {
-    List<String> options = exercise.options ?? [];
-    String question = exercise.question;
-    List<String> parts = question.split("____");
 
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Container(
-          margin: EdgeInsets.symmetric(horizontal: 20),
-          child: RichText(
-            textAlign: TextAlign.center,
-            text: TextSpan(
-              style: TextStyle(fontSize: 22, color: Colors.white),
-              children: [
-                TextSpan(text: parts[0]),
-                TextSpan(
-                  text: _grammarService.userAnswer == null ? "____" : _grammarService.userAnswer.toString(),
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    decoration: TextDecoration.underline,
-                    decorationColor: Colors.white,
-                    color: Colors.white,
-                  ),
-                ),
-                if (parts.length > 1) TextSpan(text: parts[1]),
-              ],
-            ),
-          ),
-        ),
-        Container(
-          constraints: BoxConstraints(minHeight: 150, maxHeight: 300),
-          child: GridView.builder(
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              mainAxisSpacing: 10,
-              crossAxisSpacing: 10,
-              childAspectRatio: 3.5,
-            ),
-            shrinkWrap: true,
-            padding: EdgeInsets.symmetric(horizontal: 20),
-            physics: NeverScrollableScrollPhysics(),
-            itemCount: options.length,
-            itemBuilder: (context, index) {
-              String option = options[index];
-              bool isSelected = _grammarService.userAnswer == option;
-              bool isCorrect = option == exercise.answer && _isWrong;
-
-              return GestureDetector(
-                onTap: () {
-                  if (!_grammarService.isAnswered) {
-                    _grammarService.checkAnswer(option, exercise, widget.grammarId);
-                    setState(() {
-                      _isWrong = !_grammarService.isCorrect;
-                      _errorMessage = exercise.explanation;
-                    });
-                  }
-                },
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? isCorrect
-                        ? Colors.green
-                        : Color(0xFFE57373)
-                        : Colors.white.withOpacity(0.9),
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Padding(
-                        padding: EdgeInsets.only(left: 20),
-                        child: Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? Colors.white
-                                : Color(0xFF673AB7).withOpacity(0.3),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Center(
-                            child: Text(
-                              ["A", "B", "C", "D"][index < 4 ? index : 0],
-                              style: TextStyle(
-                                color: isSelected
-                                    ? Color(0xFF673AB7)
-                                    : Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: Center(
-                          child: Text(
-                            option,
-                            style: TextStyle(
-                              color: isSelected ? Colors.white : Color(0xFF673AB7),
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ),
-                      Padding(
-                        padding: EdgeInsets.only(right: 15),
-                        child: isSelected
-                            ? Icon(
-                          isCorrect ? Icons.check : Icons.close,
-                          color: Colors.white,
-                        )
-                            : SizedBox(width: 24),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-        if (_isWrong)
-          Container(
-            margin: EdgeInsets.symmetric(horizontal: 20),
-            padding: EdgeInsets.all(15),
-            decoration: BoxDecoration(
-              color: Colors.red.withOpacity(0.8),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.close, color: Colors.white),
-                SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    '${AppConstants.incorrectMessage}\n${_errorMessage}',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        Container(
-          margin: EdgeInsets.symmetric(horizontal: 20),
-          child: ElevatedButton(
-            onPressed: _grammarService.isAnswered
-                ? () {
-              if (_grammarService.currentQuestionIndex < _grammarService.exercises.length - 1) {
-                _grammarService.nextQuestion();
-                _resetState();
-              } else {
-                showDialog(
-                  context: context,
-                  builder: (context) => ResultDialog(
-                    correctAnswers: _grammarService.correctAnswers,
-                    totalQuestions: _grammarService.exercises.length,
-                    onRestart: () {
-                      Navigator.of(context).pop();
-                      _grammarService.reset();
-                      _resetState();
-                    },
-                  ),
-                );
-              }
-            }
-                : (_grammarService.userAnswer != null
-                ? () {
-              _grammarService.checkAnswer(_grammarService.userAnswer, exercise, widget.grammarId);
-              if (!_grammarService.isCorrect) {
-                setState(() {
-                  _isWrong = true;
-                  _errorMessage = exercise.explanation;
-                });
-              }
-            }
-                : null),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Color(0xFFFFC107).withOpacity(_grammarService.isAnswered || _grammarService.userAnswer != null ? 1.0 : 0.5),
-              padding: EdgeInsets.symmetric(vertical: 15),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-              minimumSize: Size(double.infinity, 50),
-            ),
-            child: Text(
-              _grammarService.isAnswered ? 'Câu tiếp theo' : 'Kiểm tra',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -624,9 +423,9 @@ class _DragAndDropExercisesState extends State<DragAndDropExercises> {
                     style: TextStyle(color: Colors.white, fontSize: 16),
                   ),
                 )
-                    : _grammarService.exercises[_grammarService.currentQuestionIndex].type == "drag_and_drop"
-                    ? _buildDragAndDropQuestion(_grammarService.exercises[_grammarService.currentQuestionIndex])
-                    : _buildFillInBlankQuestion(_grammarService.exercises[_grammarService.currentQuestionIndex]),
+
+                    : _buildDragAndDropQuestion(_grammarService.exercises[_grammarService.currentQuestionIndex])
+
               ),
             ),
           ],

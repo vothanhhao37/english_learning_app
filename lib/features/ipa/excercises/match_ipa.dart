@@ -4,7 +4,7 @@ import '../../../services/ipa_service.dart';
 
 class IpaMatchingQuiz extends StatefulWidget {
   final Map<String, dynamic> lesson;
-  final void Function(bool, String) onAnswer;
+  final void Function(bool, String, String) onAnswer;
 
   const IpaMatchingQuiz({
     Key? key,
@@ -73,7 +73,7 @@ class _IpaMatchingQuizState extends State<IpaMatchingQuiz> with TickerProviderSt
 
   void _continueToNextQuestion() {
     if (hasAnswered) {
-      widget.onAnswer(isCorrect, widget.lesson['type']);
+      widget.onAnswer(isCorrect, widget.lesson['type'], selectedAnswer ?? '');
     }
   }
 

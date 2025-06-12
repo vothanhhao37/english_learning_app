@@ -7,7 +7,7 @@ class VocabReorderExercise extends StatefulWidget {
   final String topicId;
   final String wordId;
   final Map<String, dynamic> exerciseData;
-  final void Function(bool isCorrect) onCompleted;
+  final void Function(bool isCorrect, String userAnswer) onCompleted;
 
   const VocabReorderExercise({
     super.key,
@@ -37,19 +37,49 @@ class _VocabReorderExerciseState extends State<VocabReorderExercise> with Ticker
   final Map<int, GlobalKey> upperBoxKeys = {};
   final Set<int> occupiedLowerIndexes = {};
   final Set<int> lockedUpperIndexes = {};
+  late AnimationController _animationController;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _opacityAnimation;
 
   @override
   void initState() {
     super.initState();
     _loadData();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: Curves.easeOutBack,
+      ),
+    );
+    _opacityAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
+      ),
+    );
+    _animationController.forward();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _updatePositions();
     });
   }
 
+  @override
+  void dispose() {
+    for (var controller in animationControllers.values) {
+      controller.dispose();
+    }
+    _animationController.dispose();
+    super.dispose();
+  }
+
   void _loadData() {
     final data = widget.exerciseData;
     pool = List<String>.from(data['scrambled'] ?? []);
+    pool.shuffle();
     correctAnswer = (data['correct_answer'] ?? '').toLowerCase().replaceAll(' ', '');
     question = data['question'] ?? '';
     upperBoxes = List<String?>.filled(correctAnswer.length, null);
@@ -123,7 +153,7 @@ class _VocabReorderExerciseState extends State<VocabReorderExercise> with Ticker
             return Positioned(
               left: x,
               top: y,
-              child: _buildChar(character, Colors.green.shade300),
+              child: _buildChar(character, Colors.white, Color(0xFF6A3DE8)),
             );
           },
         );
@@ -184,7 +214,7 @@ class _VocabReorderExerciseState extends State<VocabReorderExercise> with Ticker
               return Positioned(
                 left: x,
                 top: y,
-                child: _buildChar(character, Colors.blue.shade300),
+                child: _buildChar(character, Colors.white, Color(0xFF6A3DE8)),
               );
             },
           );
@@ -208,139 +238,166 @@ class _VocabReorderExerciseState extends State<VocabReorderExercise> with Ticker
   void _checkAnswer() {
     if (!upperBoxes.contains(null)) {
       final userAnswer = upperBoxes.join().toLowerCase().replaceAll(' ', '');
+      final isCorrect = userAnswer == correctAnswer;
       setState(() {
         completed = true;
-        correct = userAnswer == correctAnswer;
+        correct = isCorrect;
       });
 
-      showCustomSnackBar(
-        context,
-        correct,
-        text: correct ? 'Chính xác!' : 'Sai rồi. Đáp án là: $correctAnswer',
-      );
-      widget.onCompleted(correct);
+      widget.onCompleted(isCorrect, upperBoxes.join());
     }
-  }
-
-  Widget _buildChar(String char, Color color) {
-    return Container(
-      width: 40,
-      height: 40,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        char,
-        style: const TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
-          color: Colors.black,
-          decoration: TextDecoration.none,
-          height: 1.0,
-        ),
-      ),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
+    return ScaleTransition(
+      scale: _scaleAnimation,
+      child: FadeTransition(
+        opacity: _opacityAnimation,
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0xFF6A3DE8), Color(0xFF5035BE)],
+            ),
+          ),
+          child: SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(10),
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.15),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Text(
+                          question,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      const SizedBox(height: 30),
+                      Container(
+                        padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.blue.shade100,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Column(
-                children: [
-                  Text('📘 Hint: $question', style: const TextStyle(fontSize: 18)),
-                  const SizedBox(height: 10),
-                  Center(
+                          color: Colors.white.withOpacity(0.10),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.18),
+                            width: 1.5,
+                          ),
+                        ),
                     child: Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
+                          spacing: 8,
+                          runSpacing: 8,
                       alignment: WrapAlignment.center,
                       children: List.generate(
                         upperBoxes.length,
                             (index) => GestureDetector(
-                          onTap: upperBoxes[index] != null ? () => moveCharacterDown(index) : null,
+                              onTap: () => moveCharacterDown(index),
                           child: Container(
                             key: upperBoxKeys[index],
-                            width: 60,
-                            height: 60,
-                            alignment: Alignment.center,
+                                width: 40,
+                                height: 40,
                             decoration: BoxDecoration(
-                              border: Border.all(color: Colors.blue, width: 2),
-                              borderRadius: BorderRadius.circular(8),
-                              color: (upperBoxes[index] != null) ? Colors.blue.shade300 : Colors.white,
+                                  color: Colors.white.withOpacity(0.85),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: const Color(0xFF6A3DE8).withOpacity(0.25),
+                                    width: 1.5,
+                                  ),
                             ),
                             child: upperBoxes[index] != null
-                                ? Text(
-                              upperBoxes[index]!,
-                              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                            )
+                                    ? _buildChar(upperBoxes[index]!, Colors.white, Color(0xFF6A3DE8))
                                 : null,
                           ),
                         ),
                       ),
                     ),
                   ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(0),
-              child: Column(
-                children: [
+                      const SizedBox(height: 40),
                   Container(
-                    padding: const EdgeInsets.all(10),
+                        padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.transparent,
-                      borderRadius: BorderRadius.circular(10),
+                          color: Colors.white.withOpacity(0.10),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.18),
+                            width: 1.5,
+                          ),
                     ),
                     child: Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
+                          spacing: 8,
+                          runSpacing: 8,
                       alignment: WrapAlignment.center,
                       children: List.generate(
                         pool.length,
                             (index) => GestureDetector(
-                          onTap: isInLowerArea[index] ? () => moveCharacterUp(index) : null,
+                              onTap: () => moveCharacterUp(index),
+                              child: Container(
+                                key: characterKeys[pool[index] + index.toString()],
                           child: isInLowerArea[index]
-                              ? Container(
-                            key: characterKeys[pool[index] + index.toString()],
-                            width: 60,
-                            height: 60,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: Colors.green.shade300,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              pool[index],
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
+                                    ? _buildChar(pool[index], Colors.white, Color(0xFF6A3DE8))
+                                    : const SizedBox(width: 40, height: 40),
                               ),
                             ),
-                          )
-                              : const SizedBox(width: 40, height: 40),
+                          ),
                         ),
                       ),
-                    ),
+                    ],
                   ),
-                  const SizedBox(height: 120),
-                ],
+                ),
               ),
             ),
-          ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChar(String char, Color bgColor, Color textColor) {
+    return Container(
+      width: 40,
+      height: 40,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: const Color(0xFF6A3DE8).withOpacity(0.25),
+          width: 1.5,
+                            ),
+        boxShadow: [
+          BoxShadow(
+            color: bgColor.withOpacity(0.15),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Text(
+        char,
+        style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+          color: textColor,
+          decoration: TextDecoration.none,
+          height: 1.0,
         ),
       ),
     );

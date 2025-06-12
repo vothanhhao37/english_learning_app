@@ -5,6 +5,7 @@ import '../../../models/conversation_pronunciation_model.dart';
 import '../../../services/conversation_pronunciation_service.dart';
 import '../excercises/dialogue_lesson.dart';
 import '../excercises/single_sentence.dart';
+import '../../../services/profile_service.dart';
 
 
 class ConversationTopicDetailScreen extends StatefulWidget {
@@ -31,6 +32,7 @@ class _ConversationTopicDetailScreenState extends State<ConversationTopicDetailS
   @override
   void initState() {
     super.initState();
+    _service.initializeAudio();
     _loadLessons();
   }
 
@@ -39,7 +41,7 @@ class _ConversationTopicDetailScreenState extends State<ConversationTopicDetailS
       lessons = await _service.loadLessons(widget.topicId);
       final uid = FirebaseAuth.instance.currentUser?.uid;
       if (uid != null) {
-        await _service.initializeTopicData(uid, widget.topicId, widget.topicName, lessons.length);
+        await _service.initializeNewTopicSummary(uid, widget.topicId, widget.topicName, lessons.length);
       }
       setState(() {
         isLoading = false;
@@ -57,6 +59,10 @@ class _ConversationTopicDetailScreenState extends State<ConversationTopicDetailS
         currentIndex++;
       });
     } else {
+      // Đã hoàn thành tất cả bài học, invalidate cache Conversation
+      if (needsTopicUpdate) {
+         ProfileService().invalidateConversationCache();
+      }
       showDialog(
         context: context,
         builder: (BuildContext context) {
@@ -80,8 +86,9 @@ class _ConversationTopicDetailScreenState extends State<ConversationTopicDetailS
   @override
   void dispose() {
     final uid = FirebaseAuth.instance.currentUser?.uid;
+    // Invalidate cache Conversation khi thoát màn hình nếu có cập nhật
     if (uid != null && needsTopicUpdate) {
-      _service.updateTopic(uid, widget.topicId, lessons.length, lessons.length);
+       ProfileService().invalidateConversationCache();
     }
     _service.dispose();
     super.dispose();
@@ -90,99 +97,91 @@ class _ConversationTopicDetailScreenState extends State<ConversationTopicDetailS
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFF3A2B71),
       appBar: AppBar(
-        title: Text(widget.topicName),
+        title: Text(
+          widget.topicName,
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
         centerTitle: true,
+        backgroundColor: const Color(0xFF3A2B71),
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(4),
           child: LinearProgressIndicator(
             value: progress,
-            backgroundColor: Colors.grey[300],
-            valueColor: const AlwaysStoppedAnimation(Colors.blueAccent),
+            backgroundColor: Colors.white24,
+            valueColor: const AlwaysStoppedAnimation(Colors.amber),
             minHeight: 4,
           ),
         ),
       ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : lessons.isEmpty
-          ? const Center(child: Text("Chưa có bài học nào 🙁"))
-          : Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              lessons[currentIndex].title ?? 'Bài học ${currentIndex + 1}',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            Expanded(
-              child: Builder(
-                builder: (_) {
-                  final lesson = lessons[currentIndex];
-                  if (lesson.type == 'sentence' || lesson.type == 'single_sentence') {
-                    return SingleSentenceLesson(
-                      key: ValueKey(lesson.id),
-                      sentence: lesson.sentence ?? '',
-                      correctTranscript: lesson.sentence ?? '',
-                      topicId: widget.topicId,
-                      lessonId: lesson.id,
-                      onNext: _onNextLesson,
-                      speakCallback: _service.speak,
-                      startRecordingCallback: _service.startRecording,
-                      stopRecordingCallback: _service.stopRecording,
-                      transcribeAudioCallback: _service.transcribeAudio,
-                      playAudioCallback: _service.playAudio,
-                      evaluatePronunciationCallback: _service.evaluatePronunciation,
-                      calculateScoreCallback: _service.calculateScore,
-                      saveSentenceScoreCallback: (lessonId, text, spokenText, score) async {
-                        await _service.saveSentenceScore(widget.topicId, lessonId, text, spokenText, score);
-                        needsTopicUpdate = true;
-                        if (score >= 50) {
-                          final uid = FirebaseAuth.instance.currentUser?.uid;
-                          if (uid != null) {
-                            await _service.updateTopic(uid, widget.topicId, lessons.length, currentIndex + 1);
-                          }
-                        }
-                      },
-                    );
-                  } else if (lesson.type == 'dialogue') {
-                    return DialogueLesson(
-                      key: ValueKey(lesson.id),
-                      dialogue: lesson.dialogue ?? [],
-                      topicId: widget.topicId,
-                      lessonId: lesson.id,
-                      onNext: _onNextLesson,
-                      onComplete: () => Navigator.pop(context),
-                      isLastLesson: currentIndex == lessons.length - 1,
-                      speakCallback: _service.speak,
-                      startRecordingCallback: _service.startRecording,
-                      stopRecordingCallback: _service.stopRecording,
-                      transcribeAudioCallback: _service.transcribeAudio,
-                      playAudioCallback: _service.playAudio,
-                      evaluatePronunciationCallback: _service.evaluatePronunciation,
-                      calculateScoreCallback: _service.calculateScore,
-                      saveDialogueScoreCallback: (lessonId, dialogue, spokenTexts, scores) async {
-                        await _service.saveDialogueScore(widget.topicId, lessonId, dialogue, spokenTexts, scores);
-                        needsTopicUpdate = true;
-                        final isCompleted = scores.values.every((score) => score >= 50);
-                        if (isCompleted) {
-                          final uid = FirebaseAuth.instance.currentUser?.uid;
-                          if (uid != null) {
-                            await _service.updateTopic(uid, widget.topicId, lessons.length, currentIndex + 1);
-                          }
-                        }
-                      },
-                    );
-                  } else {
-                    return const Center(child: Text("Không rõ loại bài học 😕"));
-                  }
-                },
+      body: SafeArea(
+        child: isLoading
+            ? const Center(child: CircularProgressIndicator(color: Colors.amber))
+            : lessons.isEmpty
+            ? const Center(
+                child: Text(
+                  "Chưa có bài học nào 🙁",
+                  style: TextStyle(color: Colors.white),
+                ))
+            : Expanded(
+                child: Builder(
+                  builder: (_) {
+                    final lesson = lessons[currentIndex];
+                    if (lesson.type == 'sentence' || lesson.type == 'single_sentence') {
+                      return SingleSentenceLesson(
+                        key: ValueKey(lesson.id),
+                        sentence: lesson.sentence ?? '',
+                        correctTranscript: lesson.sentence ?? '',
+                        topicId: widget.topicId,
+                        lessonId: lesson.id,
+                        onNext: _onNextLesson,
+                        speakCallback: _service.speak,
+                        startRecordingCallback: _service.startRecording,
+                        stopRecordingCallback: _service.stopRecording,
+                        transcribeAudioCallback: _service.transcribeAudio,
+                        playAudioCallback: _service.playAudio,
+                        evaluatePronunciationCallback: _service.evaluatePronunciation,
+                        calculateScoreCallback: _service.calculateScore,
+                        saveSentenceScoreCallback: (lessonId, text, spokenText, score) async {
+                          await _service.saveSentenceScore(widget.topicId, lessonId, text, spokenText, score);
+                          needsTopicUpdate = true;
+                        },
+                      );
+                    } else if (lesson.type == 'dialogue') {
+                      return DialogueLesson(
+                        key: ValueKey(lesson.id),
+                        dialogue: lesson.dialogue ?? [],
+                        topicId: widget.topicId,
+                        lessonId: lesson.id,
+                        onNext: _onNextLesson,
+                        onComplete: () => Navigator.pop(context),
+                        isLastLesson: currentIndex == lessons.length - 1,
+                        speakCallback: _service.speak,
+                        startRecordingCallback: _service.startRecording,
+                        stopRecordingCallback: _service.stopRecording,
+                        transcribeAudioCallback: _service.transcribeAudio,
+                        playAudioCallback: _service.playAudio,
+                        evaluatePronunciationCallback: _service.evaluatePronunciation,
+                        calculateScoreCallback: _service.calculateScore,
+                        saveDialogueScoreCallback: (lessonId, dialogue, spokenTexts, scores) async {
+                          await _service.saveDialogueScore(widget.topicId, lessonId, dialogue, spokenTexts, scores);
+                          needsTopicUpdate = true;
+                        },
+                      );
+                    } else {
+                      return const Center(
+                        child: Text(
+                          "Không rõ loại bài học 😕",
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      );
+                    }
+                  },
+                ),
               ),
-            ),
-          ],
-        ),
       ),
     );
   }
